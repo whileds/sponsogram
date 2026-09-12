@@ -1,0 +1,329 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String          @id @default(cuid())
+  email          String          @unique
+  passwordHash   String
+  role           Role            @default(CREATOR)
+  name           String
+  avatarUrl      String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  creatorProfile CreatorProfile?
+  editorProfile  EditorProfile?
+  managerProfile ManagerProfile?
+  mentorProfile  MentorProfile?
+  notifications  Notification[]
+
+  @@index([role])
+}
+
+model CreatorProfile {
+  id                 String              @id @default(cuid())
+  userId             String              @unique
+  socialHandle       String
+  platform           String
+  niche              String
+  followerCount      String
+  primaryGoal        String?
+  managerId          String?
+  mentorId           String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  application        Application?
+  brandApplications  BrandApplication[]
+  matchesAsA         CreatorMatch[]      @relation("MatchCreatorA")
+  matchesAsB         CreatorMatch[]      @relation("MatchCreatorB")
+  manager            ManagerProfile?     @relation(fields: [managerId], references: [id])
+  mentor             MentorProfile?      @relation(fields: [mentorId], references: [id])
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  editingRequests    EditingRequest[]
+  mentorshipBookings MentorshipBooking[]
+  subscription       Subscription?
+  toolkitUsage       ToolkitUsage[]
+
+  @@index([managerId])
+  @@index([mentorId])
+}
+
+model ManagerProfile {
+  id               String           @id @default(cuid())
+  userId           String           @unique
+  title            String?
+  createdAt        DateTime         @default(now())
+  assignedCreators CreatorProfile[]
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model MentorProfile {
+  id               String                   @id @default(cuid())
+  userId           String                   @unique
+  bio              String?
+  expertise        String?
+  createdAt        DateTime                 @default(now())
+  assignedCreators CreatorProfile[]
+  user             User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  availability     MentorshipAvailability[]
+  bookings         MentorshipBooking[]
+}
+
+model Application {
+  id               String            @id @default(cuid())
+  creatorProfileId String            @unique
+  fullName         String
+  email            String
+  requestedPlan    PlanTier
+  status           ApplicationStatus @default(SUBMITTED)
+  reviewedById     String?
+  reviewNote       String?
+  submittedAt      DateTime          @default(now())
+  reviewedAt       DateTime?
+  creatorProfile   CreatorProfile    @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+model Plan {
+  id                        String         @id @default(cuid())
+  tier                      PlanTier       @unique
+  name                      String
+  monthlyPriceInPaise       Int
+  quarterlyPriceInPaise     Int
+  toolkitCreditsPerMonth    Int?
+  videoEditsPerWeek         Int
+  brandApplicationsPerMonth Int?
+  mentorshipFrequencyDays   Int
+  matchmakingPriority       Boolean        @default(false)
+  isActive                  Boolean        @default(true)
+  subscriptions             Subscription[]
+}
+
+model Subscription {
+  id                     String             @id @default(cuid())
+  creatorProfileId       String             @unique
+  planId                 String
+  status                 SubscriptionStatus @default(INCOMPLETE)
+  billingCycle           String
+  razorpaySubscriptionId String?            @unique
+  currentPeriodEnd       DateTime?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  payments               Payment[]
+  creatorProfile         CreatorProfile     @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  plan                   Plan               @relation(fields: [planId], references: [id])
+}
+
+model Payment {
+  id                String       @id @default(cuid())
+  subscriptionId    String
+  razorpayOrderId   String       @unique
+  razorpayPaymentId String?      @unique
+  amountInPaise     Int
+  currency          String       @default("INR")
+  status            String
+  createdAt         DateTime     @default(now())
+  subscription      Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+}
+
+model ToolkitUsage {
+  id               String         @id @default(cuid())
+  creatorProfileId String
+  tool             String
+  creditsUsed      Int
+  inputSummary     String?
+  createdAt        DateTime       @default(now())
+  creatorProfile   CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+
+  @@index([creatorProfileId, createdAt])
+}
+
+model EditingRequest {
+  id               String         @id @default(cuid())
+  creatorProfileId String
+  title            String
+  rawFootageUrl    String
+  instructions     String?
+  format           String
+  status           EditingStatus  @default(SUBMITTED)
+  assignedEditor   String?
+  progress         Int            @default(0)
+  finalVideoUrl    String?
+  submittedAt      DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  creatorProfile   CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+
+  @@index([creatorProfileId, status])
+}
+
+model ContentStrategyItem {
+  id             String   @id @default(cuid())
+  title          String
+  hookText       String
+  niche          String
+  viewsPotential String
+  viralityReason String
+  createdAt      DateTime @default(now())
+  isActive       Boolean  @default(true)
+}
+
+model Brand {
+  id        String          @id @default(cuid())
+  name      String
+  logoUrl   String?
+  niche     String
+  campaigns BrandCampaign[]
+}
+
+model BrandCampaign {
+  id            String             @id @default(cuid())
+  brandId       String
+  payoutInPaise Int
+  deliverables  String
+  deadline      DateTime
+  isActive      Boolean            @default(true)
+  applications  BrandApplication[]
+  brand         Brand              @relation(fields: [brandId], references: [id], onDelete: Cascade)
+}
+
+model BrandApplication {
+  id               String                 @id @default(cuid())
+  creatorProfileId String
+  campaignId       String
+  status           BrandApplicationStatus @default(APPLIED)
+  appliedAt        DateTime               @default(now())
+  campaign         BrandCampaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  creatorProfile   CreatorProfile         @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([creatorProfileId, campaignId])
+}
+
+model CreatorMatch {
+  id             String         @id @default(cuid())
+  creatorAId     String
+  creatorBId     String
+  proposedFormat String
+  status         MatchStatus    @default(PENDING)
+  createdAt      DateTime       @default(now())
+  creatorA       CreatorProfile @relation("MatchCreatorA", fields: [creatorAId], references: [id], onDelete: Cascade)
+  creatorB       CreatorProfile @relation("MatchCreatorB", fields: [creatorBId], references: [id], onDelete: Cascade)
+
+  @@index([creatorAId])
+  @@index([creatorBId])
+}
+
+model MentorshipAvailability {
+  id       String             @id @default(cuid())
+  mentorId String
+  startsAt DateTime
+  endsAt   DateTime
+  isBooked Boolean            @default(false)
+  mentor   MentorProfile      @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  booking  MentorshipBooking?
+
+  @@index([mentorId, startsAt])
+}
+
+model MentorshipBooking {
+  id               String                  @id @default(cuid())
+  creatorProfileId String
+  mentorId         String
+  availabilityId   String                  @unique
+  title            String
+  status           MentorshipBookingStatus @default(BOOKED)
+  createdAt        DateTime                @default(now())
+  availability     MentorshipAvailability  @relation(fields: [availabilityId], references: [id])
+  creatorProfile   CreatorProfile          @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  mentor           MentorProfile           @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+}
+
+model playing_with_neon {
+  id    Int    @id @default(autoincrement())
+  name  String
+  value Float? @db.Real
+}
+
+model EditorProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  title     String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Role {
+  CREATOR
+  MANAGER
+  MENTOR
+  ADMIN
+  EDITOR
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  WAITLISTED
+}
+
+enum PlanTier {
+  CREATOR_LITE
+  CREATOR_PLUS
+  CREATOR_PREMIUM
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+}
+
+enum EditingStatus {
+  SUBMITTED
+  IN_REVIEW
+  EDITING
+  READY
+  COMPLETED
+}
+
+enum BrandApplicationStatus {
+  APPLIED
+  SHORTLISTED
+  ACCEPTED
+  REJECTED
+}
+
+enum MatchStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COMPLETED
+}
+
+enum MentorshipBookingStatus {
+  BOOKED
+  COMPLETED
+  CANCELED
+  RESCHEDULED
+}
