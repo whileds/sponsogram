@@ -57,7 +57,7 @@ export default function StatusPage() {
       id: "approved",
       title: "3. Video Editing & Mentor Allocation",
       description: "Assigning dedicated video editor for 2 reels/week and setting up 15-day strategy session calendar.",
-      status: user.status === "approved" || user.status === "onboarded" ? "completed" : "pending",
+      status: user.status === "approved" ? "completed" : "pending",
       time: "Pending Approval",
     },
     {
