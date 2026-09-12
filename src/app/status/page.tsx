@@ -64,7 +64,7 @@ export default function StatusPage() {
       id: "onboarded",
       title: "4. Full Creator OS Dashboard Access",
       description: "Unlock Sponsogram AI Toolkit with Unlimited credits, Brand Collab board, and Creator Matchmaking.",
-      status: user.status === "onboarded" ? "completed" : "pending",
+      status: user.status === "approved" ? "completed" : "pending",
       time: "Final Stage",
     },
   ];
