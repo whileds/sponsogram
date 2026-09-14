@@ -12,6 +12,7 @@ import type { Role } from "@prisma/client";
 // Credentials users into the adapter).
 export const { handlers, auth, signIn, signOut } = NextAuth({
   // adapter: PrismaAdapter(prisma),
+  trustHost: true,
   session: { strategy: "jwt" },
   pages: {
     signIn: "/login",
